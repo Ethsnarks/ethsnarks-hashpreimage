@@ -29,6 +29,9 @@ git-pull:
 	$(GIT) pull --recurse-submodules
 	$(GIT) submodule update --recursive --remote
 
+cxx-tests:
+	$(MAKE) -C .build test
+
 clean:
 	rm -rf .build
 
@@ -38,7 +41,7 @@ python-test:
 solidity-test:
 	$(MAKE) -C solidity test
 
-test: cli-tests python-test solidity-test
+test: cxx-tests cli-tests python-test solidity-test
 
 .keys/hashpreimage.pk.raw: $(CLI)
 	mkdir -p $(dir $@)
