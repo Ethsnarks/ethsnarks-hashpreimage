@@ -9,7 +9,7 @@ from ethsnarks.utils import libsnark2python, native_lib_path
 
 VK_FILENAME = '../.keys/hashpreimage.vk.json'
 PK_FILENAME = '../.keys/hashpreimage.pk.raw'
-SO_FILENAME = native_lib_path('../.build/libx_hashpreimage')
+SO_FILENAME = native_lib_path('../.build/libhashpreimage')
 
 
 class HashPreimageTests(unittest.TestCase):

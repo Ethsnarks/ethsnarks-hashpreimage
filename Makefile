@@ -1,4 +1,8 @@
-CLI = .build/x_hashpreimage_cli
+CLI = .build/hashpreimage_cli
+KEY_PREFIX = .keys/hashpreimage
+PROVING_KEY = $(KEY_PREFIX).pk.raw
+VERIFYING_KEY = $(KEY_PREFIX).vk.json
+GIT ?= git
 
 all: $(CLI) test
 
@@ -19,11 +23,11 @@ performance:
 	mkdir -p .build && cd .build && cmake -DCMAKE_BUILD_TYPE=Release -DPERFORMANCE=1 ../circuit/
 
 git-submodules:
-	git submodule update --init --recursive
+	$(GIT) submodule update --init --recursive
 
 git-pull:
-	git pull --recurse-submodules
-	git submodule update --recursive --remote
+	$(GIT) pull --recurse-submodules
+	$(GIT) submodule update --recursive --remote
 
 clean:
 	rm -rf .build
@@ -34,8 +38,14 @@ python-test:
 solidity-test:
 	$(MAKE) -C solidity test
 
-test: .keys/hashpreimage.pk.raw solidity-test python-test
+test: cli-tests python-test solidity-test
 
 .keys/hashpreimage.pk.raw: $(CLI)
 	mkdir -p $(dir $@)
-	$(CLI) genkeys .keys/hashpreimage.pk.raw .keys/hashpreimage.vk.json
+	$(CLI) genkeys $(PROVING_KEY) $(VERIFYING_KEY)
+
+cli-tests: $(PROVING_KEY)
+	ls -lah $(PROVING_KEY)
+	time $(CLI) prove $(PROVING_KEY) 0x9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a089f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08 .keys/hpi.proof.json
+	time $(CLI) verify $(VERIFYING_KEY) .keys/hpi.proof.json
+	#time ./build/src/test/benchmark/benchmark_load_proofkey .keys/hpi.pk.raw

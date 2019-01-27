@@ -1,0 +1,29 @@
+{
+	"name": "ethsnarks-hashpreimage",
+	"version": "0.1.0",
+	"description": "Ethsnarks Hash pre-image example",
+	"main": "truffle.js",
+	"repository": "https://github.com/HarryR/ethsnarks-hashpreimage.git",
+	"author": "HarryR@noreply.users.gihub.com",
+	"license": "GPL-3.0+",
+	"dependencies": {
+		"solc": "^0.5.3",
+		"truffle": "^5.0.2"
+	},
+	"devDependencies": {
+		"bn.js": "^4.11.8",
+		"ffi": "github:node-ffi/node-ffi",
+		"ganache-cli": "^6.2.5",
+		"ref": "^1.3.5",
+		"ref-array": "^1.2.0",
+		"solhint": "^1.5.0",
+		"solidity-coverage": "^0.5.11"
+	},
+	"scripts": {
+		"compile": "truffle compile",
+		"test": "truffle test",
+		"testrpc": "ganache-cli",
+		"coverage": "solidity-coverage",
+		"lint": "solhint contracts/**/*.sol"
+	}
+}

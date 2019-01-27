@@ -5,7 +5,7 @@
 #include <iostream> // cerr
 #include <fstream>  // ofstream
 
-#include "mod/hashpreimage.cpp"
+#include "hashpreimage.cpp"
 #include "utils.hpp"
 #include "stubs.hpp"
 
