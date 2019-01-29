@@ -17,8 +17,21 @@ contract HashPreimageExample
         m_gammaABC = in_gammaABC;
     }
 
+
+    function TestVerify (
+        uint256[14] memory in_vk,
+        uint256[] memory vk_gammaABC,
+        uint256[8] memory in_proof,
+        uint256[] memory proof_inputs
+    )
+        public view returns (bool)
+    {
+        return Verifier.Verify(in_vk, vk_gammaABC, in_proof, proof_inputs);
+    }
+
+
     // Provide proof of knowledge of a hash preimage
-    function Prove(
+    function Verify(
         uint256[] memory in_data,
         uint256[8] memory proof
     )

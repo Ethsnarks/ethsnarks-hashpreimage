@@ -1,14 +1,7 @@
-// Copyright (c) 2018 HarryR
-// License: GPL-3.0+
-
 #include "hashpreimage.hpp"
 
-#include "ethsnarks.hpp"
-
-#include "gadgets/sha256_full.hpp"
+#include "gadgets/sha256_many.cpp"
 #include "utils.hpp"
-#include "export.hpp"
-#include "import.hpp"
 #include "stubs.hpp"
 
 #include <libff/algebra/fields/field_utils.hpp>
@@ -19,7 +12,7 @@ namespace ethsnarks {
 
 
 /**
-* Verify that SHA256(private<512bit_block>) == public<output>
+* Verify that SHA256(private<secret>) == public<input>
 */
 class mod_hashpreimage : public GadgetT
 {
@@ -28,23 +21,21 @@ public:
 
     static const size_t SHA256_block_size_bytes = libsnark::SHA256_block_size / 8;
 
+    static const size_t secret_input_size_bits = libsnark::SHA256_block_size;
+
+    static const size_t secret_input_size_bytes = secret_input_size_bits / 8;
+
     const size_t input_size_in_bits = libsnark::SHA256_digest_size;
 
     const size_t input_size_in_fields;
 
-    const VariableArrayT input_as_field_elements;
+    const VariableArrayT public_inputs;
 
-    libsnark::digest_variable<FieldT> expected_digest;
+    const VariableArrayT secret_input_bits;
 
-    const VariableArrayT input_as_bits;
+    sha256_many hasher;
 
-    libsnark::multipacking_gadget<FieldT> unpacker;
-
-    libsnark::block_variable<FieldT> input_block;
-
-    libsnark::digest_variable<FieldT> output;
-
-    sha256_full_gadget_512 full_hasher;
+    libsnark::multipacking_gadget<FieldT> packer;
 
 
     mod_hashpreimage(
@@ -56,56 +47,49 @@ public:
         // number of field packed elements as input
         input_size_in_fields( libff::div_ceil(input_size_in_bits, FieldT::capacity()) ),
 
-        // packed input, given to prover/verifier
-        input_as_field_elements( make_var_array(in_pb, input_size_in_fields, FMT(annotation_prefix, " input_as_field_elements")) ),
+        // public inputs
+        public_inputs( make_var_array(in_pb, input_size_in_fields, FMT(annotation_prefix, ".public_inputs")) ),
 
-        // public input digest, must match output
-        expected_digest(in_pb, libsnark::SHA256_digest_size, FMT(annotation_prefix, " expected_digest")),
+        // Secret input bits
+        secret_input_bits( make_var_array(in_pb, secret_input_size_bits, FMT(annotation_prefix, ".secret_input_bits")) ),
 
-        // unpacked input bits, mapped to the input digest
-        input_as_bits(expected_digest.bits.begin(), expected_digest.bits.end()),
+        // HASH(secret) -> packed(public_inputs)
+        hasher(in_pb, secret_input_bits, FMT(annotation_prefix, ".hasher")),
 
-        // unpack from field elements (packed bits)
-        unpacker(in_pb, input_as_bits, input_as_field_elements, FieldT::capacity(), "unpacker"),
-
-        // private input block for hashing, 512 bits
-        input_block(in_pb, libsnark::SHA256_block_size, FMT(annotation_prefix, " input_block")),
-
-        // output digest variable, 256 bits
-        output(in_pb, libsnark::SHA256_digest_size, FMT(annotation_prefix, " output")),
-
-        // HASH(input_block) -> output
-        full_hasher(in_pb, input_block, output, FMT(annotation_prefix, " full_hasher"))
+        // pack the hash result into the input field elements
+        packer(in_pb, hasher.result().bits, public_inputs, FieldT::capacity(), FMT(annotation_prefix, ".packer"))
     {
         in_pb.set_input_sizes( input_size_in_fields );
     }
 
 
+    const libff::bit_vector digest_bits()
+    {
+        return hasher.result().bits.get_bits(this->pb);
+    }
+
+
     void generate_r1cs_constraints()
     {
-        unpacker.generate_r1cs_constraints(true);
+        hasher.generate_r1cs_constraints();
 
-        full_hasher.generate_r1cs_constraints();
+        // Output bits from hasher are already enforced to be bits
+        packer.generate_r1cs_constraints(false);
     }
 
 
     void generate_r1cs_witness(
-        const libff::bit_vector &in_block,
-        const libff::bit_vector &in_expected_bv
+        const libff::bit_vector& in_secret_bv
     ) {
-        assert( in_block.size() == libsnark::SHA256_block_size );
+        // Fill secret bits
+        assert( in_secret_bv.size() == secret_input_bits.size() );
+        secret_input_bits.fill_with_bits(this->pb, in_secret_bv);
 
-        assert( in_expected_bv.size() == libsnark::SHA256_digest_size );
+        // Hash the secret input
+        hasher.generate_r1cs_witness();
 
-        input_block.generate_r1cs_witness(in_block);
-
-        full_hasher.generate_r1cs_witness();
-
-        expected_digest.generate_r1cs_witness(in_expected_bv);
-
-        output.generate_r1cs_witness(in_expected_bv);
-
-        unpacker.generate_r1cs_witness_from_bits();
+        // Fill public inputs from the hash output bits
+        packer.generate_r1cs_witness_from_bits();
     }
 
 
@@ -113,50 +97,46 @@ public:
     * Given input bytes of SHA256 block size, generate the witness for the expected output
     */
     void generate_r1cs_witness(
-        const uint8_t in_bytes[SHA256_block_size_bytes]
+        const uint8_t* in_secret
     ) {
-        SHA256_CTX ctx;
-        uint8_t output_digest[SHA256_digest_size_bytes];
+        const auto input_bv = bytes_to_bv(in_secret, secret_input_size_bytes);
 
-        SHA256_Init(&ctx);
-        SHA256_Update(&ctx, in_bytes, SHA256_block_size_bytes);
-        SHA256_Final(output_digest, &ctx);
-
-        const auto input_bv = bytes_to_bv(in_bytes, SHA256_block_size_bytes);
-
-        const auto output_bv = bytes_to_bv(output_digest, SHA256_digest_size_bytes);
-
-        this->generate_r1cs_witness( input_bv, output_bv );
+        this->generate_r1cs_witness( input_bv );
     }
 
 
     static PrimaryInputT make_primary_input(const libff::bit_vector &in_block_bv)
     {
-        assert( in_block_bv.size() == libsnark::SHA256_block_size );
+        assert( in_block_bv.size() == secret_input_size_bits );
 
         return libff::pack_bit_vector_into_field_element_vector<FieldT>(in_block_bv);
     }
 };
 
-// ethsnarks
+// namespace ethsnarks
 }
 
 
-char *hashpreimage_prove( const char *pk_file, const uint8_t *preimage_bytes64 )
-{
-    ethsnarks::ppT::init_public_params();
+using ethsnarks::ppT;
+using ethsnarks::ProtoboardT;
+using ethsnarks::mod_hashpreimage;
 
-    ethsnarks::ProtoboardT pb;
-    ethsnarks::mod_hashpreimage mod(pb, "module");
+
+char *hashpreimage_prove( const char *pk_file, const uint8_t *preimage )
+{
+    ppT::init_public_params();
+
+    ProtoboardT pb;
+    mod_hashpreimage mod(pb, "module");
     mod.generate_r1cs_constraints();
-    mod.generate_r1cs_witness(preimage_bytes64);
+    mod.generate_r1cs_witness(preimage);
 
     if( ! pb.is_satisfied() )
     {
         return nullptr;
     }
 
-    auto json = ethsnarks::stub_prove_from_pb(pb, pk_file);
+    const auto json = ethsnarks::stub_prove_from_pb(pb, pk_file);
 
     return ::strdup(json.c_str());
 }

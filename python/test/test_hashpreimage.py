@@ -3,7 +3,7 @@ from binascii import hexlify
 from hashlib import sha256
 from os import urandom
 
-from ethsnarks.mod.hashpreimage import HashPreimage
+from hashpreimage import HashPreimage
 from ethsnarks.utils import libsnark2python, native_lib_path
 
 

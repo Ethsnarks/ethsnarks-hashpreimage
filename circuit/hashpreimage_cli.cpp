@@ -1,6 +1,3 @@
-// Copyright (c) 2018 HarryR
-// License: GPL-3.0+
-
 #include <cstring>
 #include <iostream> // cerr
 #include <fstream>  // ofstream

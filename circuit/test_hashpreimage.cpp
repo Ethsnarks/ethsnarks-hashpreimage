@@ -1,15 +1,10 @@
 #include "utils.hpp"
+#include "stubs.hpp"
 #include "hashpreimage.cpp"
 
-using libsnark::r1cs_gg_ppzksnark_zok_generator;
-using libsnark::r1cs_gg_ppzksnark_zok_prover;
-using libsnark::r1cs_gg_ppzksnark_zok_verifier_strong_IC;
 
 using ethsnarks::ppT;
-using ethsnarks::FieldT;
 using ethsnarks::ProtoboardT;
-using ethsnarks::SHA256_block_size_bytes;
-using ethsnarks::SHA256_digest_size_bytes;
 using ethsnarks::bytes_to_bv;
 using ethsnarks::bv_to_bytes;
 using ethsnarks::print_bv;
@@ -20,6 +15,9 @@ int main( int argc, char **argv )
 {
 	// Types for board
 	ppT::init_public_params();
+
+    const auto SHA256_block_size_bytes = mod_hashpreimage::SHA256_block_size_bytes;
+    const auto SHA256_digest_size_bytes = mod_hashpreimage::SHA256_digest_size_bytes;
 
     const uint8_t input_buffer[SHA256_block_size_bytes] = {
         0x9F, 0x86, 0xD0, 0x81, 0x88, 0x4C, 0x7D, 0x65, 0x9A, 0x2F, 0xEA, 0xA0, 0xC5, 0x5A, 0xD0, 0x15,
@@ -38,17 +36,17 @@ int main( int argc, char **argv )
 
     // Setup new preimage hash
     ProtoboardT pb;
-    mod_hashpreimage mod(pb, "mod_hashpreimage");
+    mod_hashpreimage mod(pb, "module");
     mod.generate_r1cs_constraints();
-    mod.generate_r1cs_witness(input_buffer_bv, output_expected_bv);
+    mod.generate_r1cs_witness(input_buffer_bv);
 	if( ! pb.is_satisfied() )
 	{
-		std::cerr << "FAIL circuit satisfied\n";
+		std::cerr << "FAIL circuit not satisfied\n";
 		return 1;
 	}
 
     // Verify output is as expected
-    auto full_output_bits = mod.output.get_digest();
+    const auto full_output_bits = mod.digest_bits();
     uint8_t full_output_bytes[SHA256_digest_size_bytes];
     bv_to_bytes(full_output_bits, full_output_bytes);
     if( memcmp(full_output_bytes, output_expected, SHA256_digest_size_bytes) != 0 )
@@ -70,32 +68,5 @@ int main( int argc, char **argv )
         return 2;
     }
 
-    const auto constraints = pb.get_constraint_system();
-
-    // Then generate key pair
-    std::cout << "Setup keypair\n";
-    const auto keypair = r1cs_gg_ppzksnark_zok_generator<ppT>(constraints);
-
-    // Prove the input using the key pair
-    std::cout << "Primary Input\n";
-    const auto primary_input = pb.primary_input();
-
-    std::cout << "Aux Input\n";
-    const auto auxiliary_input = pb.auxiliary_input();
-
-    std::cout << "Beginning to prove\n";
-    const auto proof = r1cs_gg_ppzksnark_zok_prover<ppT>(keypair.pk, primary_input, auxiliary_input);
-
-    //auto json = proof_to_json(proof, primary_input);
-
-    // Then verify it
-    const auto status = libsnark::r1cs_gg_ppzksnark_zok_verifier_strong_IC <ppT> (keypair.vk, primary_input, proof);
-    if( ! status )
-    {
-        std::cerr << "FAIL verify\n";
-        return 3;
-    }
-
-	std::cout << "OK\n";
-	return 0;
+    return ethsnarks::stub_test_proof_verify(pb);
 }

@@ -14,10 +14,10 @@ extern "C" {
 * Create a proof of a 64 byte preimage without revealing it to the verifier
 *
 * @param pk_file Path of file which contains the proving key
-* @param preimage_bytes64 512 bits, used as the input block to the hash
+* @param preimage 64 bytes, used as the input block to the hash
 * @returns Proof string, as a JSON-encoded dictionary
 */
-char *hashpreimage_prove( const char *pk_file, const uint8_t *preimage_bytes64 );
+char *hashpreimage_prove( const char *pk_file, const uint8_t *preimage );
 
 /**
 * Generate the proving key for the hashpreimage circuit
