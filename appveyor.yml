@@ -21,7 +21,7 @@ install:
 
 before_build:
   - cmake -E make_directory build
-  - cmake -E chdir build cmake -G "%CMAKE_GENERATOR%" -DOPENSSL_ROOT_DIR=C:\OpenSSL-Win64 --DOPENSSL_LIBRARIES=C:\OpenSSL-Win64\lib -DOPENSSL_INCLUDE_DIR=C:\OpenSSL-Win64\include ..
+  - cmake -E chdir build cmake -G "%CMAKE_GENERATOR%" -DOPENSSL_ROOT_DIR=C:\OpenSSL-Win64 --DOPENSSL_LIBRARIES=C:\OpenSSL-Win64\lib -DOPENSSL_INCLUDE_DIR=C:\OpenSSL-Win64\include ..\circuit
 
 build_script:
   - cmake --build build
