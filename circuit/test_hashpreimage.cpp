@@ -68,5 +68,10 @@ int main( int argc, char **argv )
         return 2;
     }
 
-    return ethsnarks::stub_test_proof_verify(pb);
+    if( ! ethsnarks::stub_test_proof_verify(pb) ) {
+        std::cerr << "FAIL could not prove\n";
+        return 4;
+    }
+
+    return 0;
 }

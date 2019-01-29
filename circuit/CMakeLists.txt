@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.8)
 project(ethsnarks-hashpreimage)
 
-add_subdirectory(../ethsnarks ../.build/ethsnarks EXCLUDE_FROM_ALL)
+set(ETHSNARKS_DISABLE_TESTS ON CACHE BOOL "Disable Ethsnarks tests")
+set(SHA3IUF_DISABLE_TESTS ON CACHE BOOL "Disable SHA3IUF tests")
 
-set(ETHSNARKS_DISABLE_TESTS ON)
-set(SHA3IUF_DISABLE_TESTS ON)
+add_subdirectory(../ethsnarks ../.build/ethsnarks EXCLUDE_FROM_ALL)
 
 find_package(OpenSSL REQUIRED)
 
